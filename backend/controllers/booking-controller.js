@@ -6,29 +6,25 @@ import mongoose from "mongoose";
 export const newBooking = async (req, res, next) => {
     const { movieName, seatNumber, date, user } = req.body;
 
+    if (!movieName || !seatNumber || !date || !user) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
     let existingMovie;
     let existingUser;
-    try{
-        existingMovie = await Movie.findById(movieName)
+    try {
+        existingMovie = await Movie.findById(movieName);
         existingUser = await User.findById(user);
-    }catch(err)
-    {
-        return console.log(err)
+    } catch (err) {
+        console.error('Error finding movie or user:', err);
+        return res.status(500).json({ message: "Error finding movie or user" });
     }
-   if (!existingMovie) {
+
+    if (!existingMovie) {
         return res.status(404).json({ message: "Movie not found" });
     }
     if (!existingUser) {
         return res.status(404).json({ message: "User not found" });
-    }
-
-    if (
-         !movieName||
-        !seatNumber  ||
-        !date || date.trim() === "" ||
-        !user 
-    ) {
-        return res.status(400).json({ message: "All fields are required" });
     }
 
     const bookingDate = new Date(date);
@@ -39,40 +35,39 @@ export const newBooking = async (req, res, next) => {
     let booking;
     try {
         booking = new Booking({
-            movieName,
+            movieName: existingMovie._id,
             seatNumber,
             date: bookingDate,
-            user
+            user: existingUser._id
         });
-        const session  = await mongoose.startSession();
-        session.startTransaction()
-       
-        //transactions taqking place
-        existingUser.bookings.push(booking)
-        existingMovie.bookings.push(booking)
-        //
-        //saving in the same session 
-         await existingUser.save({session})
-         await existingMovie.save({session})
-         await booking.save({session})
 
-
-        await  session.commitTransaction()
-        session.endSession();
-
-
-
-
+        const session = await mongoose.startSession();
+        session.startTransaction();
         
-    } catch (err) {
-        return next(err);
-    }
+        existingUser.bookings.push(booking);
+        existingMovie.bookings.push(booking);
+        
+        await existingUser.save({ session });
+        await existingMovie.save({ session });
+        await booking.save({ session });
 
-    if (!booking) {
+        await session.commitTransaction();
+        session.endSession();
+    } catch (err) {
+        console.error('Error creating booking:', err);
         return res.status(500).json({ message: "Failed to create booking" });
     }
 
-    return res.status(201).json({message:"booking succesfull", booking });
+    return res.status(201).json({
+        message: "Booking successful",
+        booking: {
+            id: booking._id,
+            movieName: existingMovie.title,
+            seatNumber,
+            date: bookingDate,
+            user: existingUser.name
+        }
+    });
 };
 
 export const getBookingById = async (req, res, next) => {
@@ -89,7 +84,6 @@ export const getBookingById = async (req, res, next) => {
     return res.status(200).json({ booking });
 };
 
-
 export const deleteBooking = async (req, res, next) => {
     const { id } = req.params;
     let booking;
@@ -105,13 +99,6 @@ export const deleteBooking = async (req, res, next) => {
         session.commitTransaction();
         session.endSession();
         
-
-
-
-
-
-
-
     } catch (err) {
         return next(err);
     }
@@ -119,4 +106,21 @@ export const deleteBooking = async (req, res, next) => {
         return res.status(404).json({ message: "Booking not found" });
     }
     return res.status(200).json({ message: "Booking deleted successfully", booking });
+};
+
+export const getUserBookings = async (req, res, next) => {
+    try {
+        const userId = req.params.id; // Get user ID from the URL parameter
+        console.log('Fetching bookings for user:', userId);
+        
+        const bookings = await Booking.find({ user: userId })
+            .populate('movieName', 'title posterUrl')
+            .sort({ date: -1 }); // Sort by date, newest first
+            
+        console.log('Found bookings:', bookings);
+        return res.status(200).json({ bookings });
+    } catch (err) {
+        console.error('Error fetching user bookings:', err);
+        return res.status(500).json({ message: "Failed to fetch user bookings" });
+    }
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { Play, Star, Calendar, Ticket } from 'lucide-react';
 import axios from 'axios';
+import './Homepage.css';
 
 const Homepage = () => {
   const [movies, setMovies] = useState([]);
@@ -314,36 +315,72 @@ const Homepage = () => {
   const featuredMovie = movies.find(movie => movie.featured);
 
   return (
-    <Box sx={{ 
-      background: 'linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%)',
-      minHeight: '100vh'
-    }}>
-      {featuredMovie && <FeaturedMovie movie={featuredMovie} />}
-      
-      <Container sx={{ py: 8 }}>
-        <Typography 
-          variant="h4" 
-          gutterBottom 
-          sx={{ 
-            mb: 6,
-            color: '#ffffff',
-            fontWeight: '700',
-            fontSize: '2.5rem',
-            textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-            textAlign: 'center'
-          }}
-        >
-          Latest Releases
-        </Typography>
-        <Grid container spacing={4}>
-          {movies.map((movie) => (
-            <Grid item key={movie._id} xs={12} sm={6} md={4} lg={3}>
-              <MovieCard movie={movie} />
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
-    </Box>
+    <div className="homepage">
+      <div className="hero-section">
+        <h1>Welcome to MovieHub</h1>
+        <p>Your ultimate destination for movie tickets and entertainment</p>
+        <Link to="/movies" className="cta-button">
+          Browse Movies
+        </Link>
+      </div>
+
+      <div className="features-section">
+        <div className="feature">
+          <h3>Easy Booking</h3>
+          <p>Book your movie tickets in just a few clicks</p>
+        </div>
+        <div className="feature">
+          <h3>Wide Selection</h3>
+          <p>Choose from a vast collection of movies</p>
+        </div>
+        <div className="feature">
+          <h3>Secure Payments</h3>
+          <p>Safe and secure payment processing</p>
+        </div>
+      </div>
+
+      <div className="about-section">
+        <h2>About MovieHub</h2>
+        <p>
+          MovieHub is your one-stop platform for booking movie tickets. We offer a
+          seamless experience for movie enthusiasts to discover, book, and enjoy
+          their favorite films. With our user-friendly interface and secure
+          booking system, you can easily find and book tickets for the latest
+          movies.
+        </p>
+      </div>
+
+      <Box sx={{ 
+        background: 'linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%)',
+        minHeight: '100vh'
+      }}>
+        {featuredMovie && <FeaturedMovie movie={featuredMovie} />}
+        
+        <Container sx={{ py: 8 }}>
+          <Typography 
+            variant="h4" 
+            gutterBottom 
+            sx={{ 
+              mb: 6,
+              color: '#ffffff',
+              fontWeight: '700',
+              fontSize: '2.5rem',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+              textAlign: 'center'
+            }}
+          >
+            Latest Releases
+          </Typography>
+          <Grid container spacing={4}>
+            {movies.map((movie) => (
+              <Grid item key={movie._id} xs={12} sm={6} md={4} lg={3}>
+                <MovieCard movie={movie} />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+    </div>
   );
 };
 

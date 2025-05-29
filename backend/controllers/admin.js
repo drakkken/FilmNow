@@ -7,7 +7,7 @@ export const addAdmin = async(req,res,next)=>{
    
     const {email,password} = req.body;
 
-    if (!email || email.trim() === "" || !password || password.trim() === "") {
+    if (!email || email.trim() === "" ) {
         return res.status(400).json({ message: "Email and password are required" });
     }
    

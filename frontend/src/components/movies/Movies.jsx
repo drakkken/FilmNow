@@ -28,9 +28,10 @@ import {
   ArrowLeft,
   Clock
 } from 'lucide-react';
-import axios from 'axios';
+import { movieService } from '../../services/api';
+import './Movies.css';
 
-const MoviesPage = () => {
+const Movies = () => {
   const [movies, setMovies] = useState([]);
   const [filteredMovies, setFilteredMovies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,24 +40,46 @@ const MoviesPage = () => {
   const [filterBy, setFilterBy] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [moviesPerPage] = useState(12);
+  const [error, setError] = useState('');
   const theme = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchMovies = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/movies');
-        setMovies(response.data.movies);
-        setFilteredMovies(response.data.movies);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching movies:', error);
-        setLoading(false);
-      }
-    };
-
     fetchMovies();
   }, []);
+
+  const fetchMovies = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching movies...');
+      const response = await movieService.getAllMovies();
+      console.log('Raw API Response:', response);
+      
+      if (!response || !response.movies) {
+        console.error('Invalid response format:', response);
+        setError('Invalid response from server');
+        return;
+      }
+      
+      const moviesData = response.movies;
+      console.log('Processed movies data:', moviesData);
+      
+      if (!Array.isArray(moviesData)) {
+        console.error('Movies data is not an array:', moviesData);
+        setError('Invalid movies data format');
+        return;
+      }
+      
+      setMovies(moviesData);
+      setFilteredMovies(moviesData);
+    } catch (err) {
+      console.error('Error fetching movies:', err);
+      setError(err.response?.data?.message || 'Failed to fetch movies. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let filtered = [...movies];
@@ -140,7 +163,7 @@ const MoviesPage = () => {
         }}
       >
         <img
-          src={movie.posterUrl}
+          src={movie.posterUrl || 'https://via.placeholder.com/300x450'}
           alt={movie.title}
           style={{
             position: 'absolute',
@@ -310,6 +333,10 @@ const MoviesPage = () => {
         <CircularProgress sx={{ color: '#FF512F' }} />
       </Box>
     );
+  }
+
+  if (error) {
+    return <div className="error">{error}</div>;
   }
 
   return (
@@ -545,4 +572,4 @@ const MoviesPage = () => {
   );
 };
 
-export default MoviesPage;
+export default Movies;

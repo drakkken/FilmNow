@@ -108,3 +108,104 @@ export const getMovieById = async(req,res,next)=>{
     }
     return res.status(200).json({ movie });
 }
+
+export const updateMovie = async (req, res, next) => {
+    const { id } = req.params;
+    const { title, description, actors, releaseDate, posterUrl, featured } = req.body;
+
+    // Verify admin token
+    const extractedToken = req.headers.authorization?.split(" ")[1];
+    if (!extractedToken || extractedToken.trim() === "") {
+        return res.status(401).json({ message: "Authentication required" });
+    }
+
+    let adminId;
+    try {
+        const decrypted = jwt.verify(extractedToken, process.env.SECRET_KEY);
+        adminId = decrypted.id;
+    } catch (err) {
+        return res.status(401).json({ message: "Invalid token" });
+    }
+
+    // Validate required fields
+    if (!title || title.trim() === "" || !description || description.trim() === "" ||
+        !releaseDate || releaseDate.trim() === "" || !posterUrl || posterUrl.trim() === "") {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    let movie;
+    try {
+        movie = await Movie.findById(id);
+        if (!movie) {
+            return res.status(404).json({ message: "Movie not found" });
+        }
+
+        // Check if the movie belongs to the admin
+        if (movie.admin.toString() !== adminId) {
+            return res.status(403).json({ message: "Not authorized to update this movie" });
+        }
+
+        movie.title = title;
+        movie.description = description;
+        movie.actors = actors;
+        movie.releaseDate = new Date(releaseDate);
+        movie.posterUrl = posterUrl;
+        movie.featured = featured;
+
+        await movie.save();
+    } catch (err) {
+        return res.status(500).json({ message: "Error updating movie" });
+    }
+
+    return res.status(200).json({ message: "Movie updated successfully", movie });
+};
+
+export const deleteMovie = async (req, res, next) => {
+    const { id } = req.params;
+
+    // Verify admin token
+    const extractedToken = req.headers.authorization?.split(" ")[1];
+    if (!extractedToken || extractedToken.trim() === "") {
+        return res.status(401).json({ message: "Authentication required" });
+    }
+
+    let adminId;
+    try {
+        const decrypted = jwt.verify(extractedToken, process.env.SECRET_KEY);
+        adminId = decrypted.id;
+    } catch (err) {
+        return res.status(401).json({ message: "Invalid token" });
+    }
+
+    let movie;
+    try {
+        movie = await Movie.findById(id);
+        if (!movie) {
+            return res.status(404).json({ message: "Movie not found" });
+        }
+
+        // Check if the movie belongs to the admin
+        if (movie.admin.toString() !== adminId) {
+            return res.status(403).json({ message: "Not authorized to delete this movie" });
+        }
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        // Remove movie from admin's addedMovies array
+        await Admin.findByIdAndUpdate(
+            adminId,
+            { $pull: { addedMovies: movie._id } },
+            { session }
+        );
+
+        // Delete the movie
+        await Movie.findByIdAndDelete(id, { session });
+
+        await session.commitTransaction();
+    } catch (err) {
+        return res.status(500).json({ message: "Error deleting movie" });
+    }
+
+    return res.status(200).json({ message: "Movie deleted successfully" });
+};

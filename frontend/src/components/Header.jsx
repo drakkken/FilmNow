@@ -1,70 +1,90 @@
-import {useState} from 'react'
-import {AppBar, Autocomplete, Tabs,Tab, TextField, Toolbar} from '@mui/material'
-import { useEffect } from 'react';
-import { Box } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import MovieIcon from '@mui/icons-material/Movie';
-import { Link } from 'react-router-dom';
-//import { fetchFunction } from '../api-helpers/api-helper.jsx';
-
+import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { authService } from '../services/api';
+import './Header.css';
 
 const Header = () => {
-  const [value,setValue] = useState(0);
-  const [movies,setMovies] = useState([]);
-  const getMovies = async () => {
-     try {
-        const response = await fetch("http://localhost:5000/movies");
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        setMovies(data.movies);
-    } catch (error) {
-        console.error('Fetching error:', error);
-        throw error;
-    }
-  }
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
+  const refreshUserState = () => {
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log('Refreshing user state:', storedUser);
+    setUser(storedUser);
+  };
 
-  //useEffect
   useEffect(() => {
-   getMovies()
+    // Initial user state
+    refreshUserState();
 
-      
+    // Listen for storage changes
+    const handleStorageChange = (e) => {
+      if (e.key === 'user') {
+        console.log('Storage changed:', e.newValue);
+        refreshUserState();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  const handleLogout = () => {
+    authService.logout();
+    setUser(null);
+    navigate('/');
+  };
 
-
-
-
+  const renderAuthButtons = () => {
+    console.log('Current user state:', user);
+    
+    if (user?.role === 'admin') {
+      return (
+        <>
+          <Link to="/admin" className="nav-link">Admin Dashboard</Link>
+          <button onClick={handleLogout} className="logout-button">
+            Logout
+          </button>
+        </>
+      );
+    } else if (user?.id) {
+      return (
+        <>
+          <Link to="/bookings" className="nav-link">My Bookings</Link>
+          <span className="welcome-text">Welcome, {user.name}</span>
+          <button onClick={handleLogout} className="logout-button">
+            Logout
+          </button>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <Link to="/auth" className="auth-button">
+            Login
+          </Link>
+          <Link to="/admin/login" className="admin-button">
+            Admin Login
+          </Link>
+        </>
+      );
+    }
+  };
 
   return (
-    <AppBar position="static" sx={{backgroundColor:'#2196f3'}}>
-      <Toolbar>
-        <Box display="flex" justifyContent="space-between" width="100%">
-          <Box display="flex" alignItems="center">
-            <MovieIcon sx={{ fontSize: 30, marginRight: 1 }} />
-            <h4>Movie Database</h4>
-          </Box>
-          <Box width="30%">
-            <Autocomplete
-              id="free-solo-demo"
-              freeSolo
-              options={movies.map((option) => option.title)}
-              renderInput={(params) => <TextField variant='standard' {...params} label="Search Movies" />}
-            />
-          </Box>
-          <Tabs textColor='inherit' indicatorColor='secondary' value={value} onChange={(e,newValue)=>{
-            setValue(newValue);
-          }}>
-            <Tab LinkComponent={Link} to="/movies" label="Movies" />
-            <Tab LinkComponent={Link} to="/admin" label="Admin" />
-            <Tab LinkComponent={Link} to="/auth" label="Auth" />  
-          </Tabs>
-        </Box>
-      </Toolbar>
-    </AppBar>
-  )
-}
+    <header className="header">
+      <div className="header-content">
+        <Link to="/" className="logo">
+          Movie Booking
+        </Link>
+        <nav className="nav-links">
+          <Link to="/" className="nav-link">Home</Link>
+          <Link to="/movies" className="nav-link">Movies</Link>
+          {renderAuthButtons()}
+        </nav>
+      </div>
+    </header>
+  );
+};
 
-export default Header
+export default Header;
